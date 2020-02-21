@@ -5,7 +5,7 @@ date: "2/20/2020"
 output: html_document
 ---
 
-```{r setup, include=FALSE, cache=TRUE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 # Load necessary libraries
@@ -13,6 +13,7 @@ library(tidyverse)
 library(utils)
 library(ggmosaic)
 library(ggplot2)
+library(cregg)
 
 # Decompress the file (Commented out because already completed once)
 # untar(tarfile = "ReplicationPackage (1).tar.gz")
@@ -79,11 +80,12 @@ for(i in 1:length(DDD))
            sec = as.factor(case_when(sec == 0 ~ "No",
                                      sec == 1 ~ "Yes",
                                      TRUE ~ NA_character_)),
-           age_lab = as.factor(case_when(age < 40 ~ "Under 40",
+           age_lab = as.character(case_when(age < 40 ~ "Under 40",
                                          age >= 40 & age < 60 ~ "50 - 59",
                                          age >= 60 & age < 70 ~ "60 - 69",
                                          age >= 70 ~ "70 or over",
                                          TRUE ~ NA_character_)),
+           age_lab = factor(age_lab, levels = c("70 or over", "60 - 69", "50 - 59", "Under 40")),
            educ_lab = as.factor(case_when(educ_lab == "Local public university" ~ "Other public university",
                                           TRUE ~ educ_lab)),
            dynastic_lab = as_factor(case_when(dynastic_lab == "Local-level elected politician" ~ "Loc. Pol.",
@@ -133,22 +135,12 @@ DD_up$by <- DD_up$gender_lab
 DD_lo_win$by <- DD_lo_win$gender_lab
 DD_up_win$by <- DD_up_win$gender_lab
 
-
-# DD_lo <- DD_lo %>%
-#   mutate(by = gender_lab)
-# DD_up <- DD_up %>%
-#   mutate(by = gender_lab)
-# DD_lo_win <- DD_lo_win %>%
-#   mutate(by = gender_lab)
-# DD_up_win <- DD_up_win %>%
-#   mutate(by = gender_lab)
-
 DD_lo_mosaic <- DD_lo %>%
   select(elec_type_2, by) %>%
   group_by(elec_type_2, by) %>%
   count()
 
-
+# Mosaic plots by gender
 gender_DD_lo <- ggplot(DD_lo) + 
   geom_mosaic(aes(x = product(elec_type_2), fill = by)) +
   theme_light() +
@@ -182,11 +174,49 @@ gender_DD_up
 gender_DD_lo_win
 gender_DD_up_win
 
+# Mosaic plots by age
+age_DD_lo <- ggplot(DD_lo) + 
+  geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
+  theme_light() +
+  labs(title = "HR Candidates") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25),
+                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+
+age_DD_up <- ggplot(DD_up) + 
+  geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
+  theme_light()+
+  labs(title = "HC Candidates") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25),
+                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+
+age_DD_lo_win <- ggplot(DD_lo_win) + 
+  geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
+  theme_light() +
+  labs(title = "HR Winners") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25),
+                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+
+age_DD_up_win <- ggplot(DD_up_win) + 
+  geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
+  theme_light() +
+  labs(title = "HC Winners") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25),
+                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+
+age_DD_lo
+age_DD_up
+age_DD_lo_win
+age_DD_up_win
+
 ```
 
 ```{r AMC_plots}
 
-
+amces <- cj(DD_lo, win ~ age_lab + educ_lab, estimate = "amce", 
+            by = ~gender_lab)
+diff_amces <- cj(DD_lo, win ~ age_lab + educ_lab, estimate = "amce_diff", 
+                 by = ~gender_lab)
+plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
 
 
 ```
