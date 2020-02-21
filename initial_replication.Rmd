@@ -23,7 +23,7 @@ DD_lo <- read_csv("ReplicationPackage/data/actual-lower-2014-allcandidates.csv")
 DD_up <- read_csv("ReplicationPackage/data/actual-upper-2013-allcandidates.csv")
 ```
 
-```{r pre_processing_data, cache=TRUE}
+```{r pre_processing_data}
 ### Recoding Variables
 
 ## System type indicators
@@ -80,6 +80,8 @@ for(i in 1:length(DDD))
            sec = as.factor(case_when(sec == 0 ~ "No",
                                      sec == 1 ~ "Yes",
                                      TRUE ~ NA_character_)),
+           experience_lab = as.character(experience_lab),
+           experience_lab = factor(experience_lab, levels = c("Currently in office, 3+ terms", "Currently in office, 2 terms", "Currently in office, 1 term", "Formerly in office, 3+ terms", "Formerly in office, 2 terms", "Formerly in office, 1 term", "No experience")),
            age_lab = as.character(case_when(age < 40 ~ "Under 40",
                                          age >= 40 & age < 60 ~ "50 - 59",
                                          age >= 60 & age < 70 ~ "60 - 69",
@@ -88,9 +90,12 @@ for(i in 1:length(DDD))
            age_lab = factor(age_lab, levels = c("70 or over", "60 - 69", "50 - 59", "Under 40")),
            educ_lab = as.factor(case_when(educ_lab == "Local public university" ~ "Other public university",
                                           TRUE ~ educ_lab)),
+           party_en = factor(party_en, levels = c("LDP", "Komeito", "JCP", "DPJ")),
+           home_lab = factor(home_lab, ordered = TRUE),
            dynastic_lab = as_factor(case_when(dynastic_lab == "Local-level elected politician" ~ "Loc. Pol.",
                                               dynastic_lab == "National-level elected politician" ~ "MP",
-                                              dynastic_lab == "Cabinet minister" ~ "Cab. Min.")))
+                                              dynastic_lab == "Cabinet minister" ~ "Cab. Min.",
+                                              TRUE ~ "None")))
            DDD[[i]] <- DD
 }
 
@@ -212,9 +217,9 @@ age_DD_up_win
 
 ```{r AMC_plots}
 
-amces <- cj(DD_lo, win ~ age_lab + educ_lab, estimate = "amce", 
+amces <- cj(DD_lo, win ~ age_lab + experience_lab + educ_lab + home_lab + dynastic_lab + party_en, estimate = "amce", 
             by = ~gender_lab)
-diff_amces <- cj(DD_lo, win ~ age_lab + educ_lab, estimate = "amce_diff", 
+diff_amces <- cj(DD_lo, win ~ age_lab + experience_lab + educ_lab + home_lab + dynastic_lab + party_en, estimate = "amce_diff", 
                  by = ~gender_lab)
 plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
 
