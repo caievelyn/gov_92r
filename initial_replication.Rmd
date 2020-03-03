@@ -1,5 +1,5 @@
 ---
-title: "gov_92r_initial_replication"
+title: "Initial Replication attempts"
 author: "Evelyn Cai"
 date: "2/20/2020"
 output: html_document
@@ -14,6 +14,8 @@ library(utils)
 library(ggmosaic)
 library(ggplot2)
 library(cregg)
+library(corrplot)
+library(gridExtra)
 
 # Decompress the file (Commented out because already completed once)
 # untar(tarfile = "ReplicationPackage (1).tar.gz")
@@ -39,17 +41,17 @@ DD_lo <- DD_lo %>%
          elec_type_1 = case_when(prcode == 0 ~ "SMD",
                                  kucode == 0 ~ "PR",
                                  TRUE ~ "Both"),
-         elec_type_2 = as.factor(case_when(elec_type_1 == "SMD" | elec_type_1 == "Both" ~ "SMD/Dual",
+         elec_type_2 = as.character(case_when(elec_type_1 == "SMD" | elec_type_1 == "Both" ~ "SMD/Dual",
                                  TRUE ~ elec_type_1)))
 
 
 DD_up <- DD_up %>%
   mutate(win_type_1 = as.factor(districttype),
          elec_type_1 = win_type_1,
-         win_type_2 = as.factor(case_when(win_type_1 == "SMD" | win_type_1 == "MMD" ~ "SNTV",
+         win_type_2 = case_when(win_type_1 == "SMD" | win_type_1 == "MMD" ~ "SNTV",
                                 win_type_1 == "PR" ~ "PR",
-                                TRUE ~ NA_character_)),
-         elec_type_2 = win_type_2)
+                                TRUE ~ NA_character_),
+         elec_type_2 = as.character(win_type_2))
 
 # Recode values
 
@@ -83,11 +85,13 @@ for(i in 1:length(DDD))
            experience_lab = as.character(experience_lab),
            experience_lab = factor(experience_lab, levels = c("Currently in office, 3+ terms", "Currently in office, 2 terms", "Currently in office, 1 term", "Formerly in office, 3+ terms", "Formerly in office, 2 terms", "Formerly in office, 1 term", "No experience")),
            age_lab = as.character(case_when(age < 40 ~ "Under 40",
-                                         age >= 40 & age < 60 ~ "50 - 59",
+                                         age >= 40 & age < 50 ~ "40 - 49",
+                                         age >= 50 & age < 60 ~ "50 - 59",
                                          age >= 60 & age < 70 ~ "60 - 69",
                                          age >= 70 ~ "70 or over",
                                          TRUE ~ NA_character_)),
-           age_lab = factor(age_lab, levels = c("70 or over", "60 - 69", "50 - 59", "Under 40")),
+           age_lab = factor(age_lab, levels = c("Under 40", "40 - 49", "50 - 59", "60 - 69", "70 or over")),
+           educ_lab = as.character(educ_lab),
            educ_lab = as.factor(case_when(educ_lab == "Local public university" ~ "Other public university",
                                           TRUE ~ educ_lab)),
            party_en = factor(party_en, levels = c("LDP", "Komeito", "JCP", "DPJ")),
@@ -107,12 +111,15 @@ DD_up <- DDD[[2]]
 # Reorder Levels
 
 # lower house
-DD_lo %>%
-  mutate(party_en = factor(party_en, levels = c("Independent","Other","PFG","JIP","LDP","Komeito","DPJ","PLP","SDP","JCP")))
+DD_lo <- DD_lo %>%
+  mutate(party_en = factor(party_en, levels = c("Independent","Other","PFG","JIP","LDP","Komeito","DPJ","PLP","SDP","JCP")),
+         elec_type_2 = factor(elec_type_2, levels = c("SMD/Dual", "PR")),
+         win_type_1 = factor(win_type_1, levels = c("SMD", "Zombie", "PR")))
 
 # upper house
-DD_up %>%
-  mutate(party_en = factor(party_en, levels = c("Independent","Other","JIP","LDP","Komeito","DPJ","PLP","SDP","JCP")))
+DD_up <- DD_up %>%
+  mutate(party_en = factor(party_en, levels = c("Independent","Other","JIP","LDP","Komeito","DPJ","PLP","SDP","JCP")),
+         elec_type_2 = factor(elec_type_2, levels = c("SMD", "SNTV", "PR")))
 
 ## Filter for winners
 
@@ -148,65 +155,118 @@ DD_lo_mosaic <- DD_lo %>%
 # Mosaic plots by gender
 gender_DD_lo <- ggplot(DD_lo) + 
   geom_mosaic(aes(x = product(elec_type_2), fill = by)) +
-  theme_light() +
+  theme_classic() +
   labs(title = "HR Candidates") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 gender_DD_up <- ggplot(DD_up) + 
   geom_mosaic(aes(x = product(elec_type_2), fill = by)) +
-  theme_light()+
+  theme_classic()+
   labs(title = "HC Candidates") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 gender_DD_lo_win <- ggplot(DD_lo_win) + 
-  geom_mosaic(aes(x = product(elec_type_2), fill = by)) +
-  theme_light() +
+  geom_mosaic(aes(x = product(win_type_1), fill = by)) +
+  theme_classic() +
   labs(title = "HR Winners") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 gender_DD_up_win <- ggplot(DD_up_win) + 
   geom_mosaic(aes(x = product(elec_type_2), fill = by)) +
-  theme_light() +
+  theme_classic() +
   labs(title = "HC Winners") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 gender_DD_lo
 gender_DD_up
 gender_DD_lo_win
 gender_DD_up_win
 
+
 # Mosaic plots by age
 age_DD_lo <- ggplot(DD_lo) + 
   geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
-  theme_light() +
+  theme_classic() +
   labs(title = "HR Candidates") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
-age_DD_up <- ggplot(DD_up) + 
+age_DD_up <- DD_up %>%
+  mutate(elec_type_2 = factor(elec_type_2, levels = c("SNTV", "PR"))) %>%
+  ggplot() + 
   geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
-  theme_light()+
+  theme_classic()+
   labs(title = "HC Candidates") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 age_DD_lo_win <- ggplot(DD_lo_win) + 
-  geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
-  theme_light() +
+  geom_mosaic(aes(x = product(win_type_1), fill = age_lab)) +
+  theme_classic() +
   labs(title = "HR Winners") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
-age_DD_up_win <- ggplot(DD_up_win) + 
+age_DD_up_win <- DD_up_win %>%
+  mutate(elec_type_2 = factor(elec_type_2, levels = c("SNTV", "PR"))) %>%
+  ggplot() +
   geom_mosaic(aes(x = product(elec_type_2), fill = age_lab)) +
-  theme_light() +
+  theme_classic() +
   labs(title = "HC Winners") +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25),
-                     labels = c("0", "0.25", "0.50", "0.75", "1"))
+                     labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.box.margin = margin(),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_blank())
 
 age_DD_lo
 age_DD_up
@@ -215,24 +275,181 @@ age_DD_up_win
 
 ```
 
-```{r AMC_plots}
+```{r conjoint_plots, echo = FALSE}
 
-amces <- cj(DD_lo, win ~ age_lab + experience_lab + educ_lab + home_lab + dynastic_lab + party_en, estimate = "amce", 
-            by = ~gender_lab)
-diff_amces <- cj(DD_lo, win ~ age_lab + experience_lab + educ_lab + home_lab + dynastic_lab + party_en, estimate = "amce_diff", 
-                 by = ~gender_lab)
-plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
+# Load conjoint data
+
+load("ReplicationPackage/output/conjoint.RData")
+
+# Load functions
+
+source("ReplicationPackage/funs/plot.amce.mod.R")
+source("ReplicationPackage/funs/plot.amce.difference.R")
+source("ReplicationPackage/funs/theme.nolab.R")
+
+# Analysis
+
+# Create new column called ww via function called reweight
+
+reweight <- TRUE
+
+if (reweight){
+  DD$ww <- DD$wgt
+} else {
+  DD$ww <- rep(1, nrow(DD))
+}
+
+# Factorize ideo, urban
+
+DD <- DD %>%
+  mutate(ideo = as.factor(ideo),
+         urban = as.factor(urban),
+         `Highest Educational Attainment` = case_when(`Highest Educational Attainment` == "High school" ~ "High School",
+                                                       TRUE ~ "University"),
+         `Highest Educational Attainment` = as.factor(`Highest Educational Attainment`))
+
+# Filter for certain variables; include urban
+
+amce_subset <- function(condition = rep(TRUE, nrow(DD))){
+  fmla <- Y.1 ~ Party + house + Age + Gender + Experience + Hometown + `Prior Occupation` + `Parental Political Background`
+  amce(fmla,
+       data = DD, subset = condition,
+       respondent.id = "id", cluster = TRUE, weights = "ww",
+       baselines=baseline)
+}
+
+# Create new data frames
+
+out <- amce_subset()
+
+out.education.hs <- amce_subset(DD$`Highest Educational Attainment` == "High School")
+out.education.uni <- amce_subset(DD$`Highest Educational Attainment` == "University")
+
+# Plotting results --------------------------------------------------------
+
+clevel = .95
+
+if(reweight){
+  rw <- "rw-"
+} else {
+  rw <- NULL
+}
+
+# Fig 2 top
+plot.amce.difference(out.education.hs, out.education.uni, "High School", "University")
 
 
 ```
 
 
 
+```{r AMC_plots_NOT_WORKING}
+
+# Recode Age variables to replicate AMCE charts
+
+DD_lo_join <- DD_lo %>%
+  mutate(age_lab = as.character(case_when(
+    age >= 30 & age < 42 ~ "(Baseline=30)",
+    age >= 42 & age < 57 ~ "42",
+    age >= 57 & age < 64 ~ "57",
+    age >= 64 & age < 79 ~ "64",
+    age >= 79 ~ "79",
+    TRUE ~ NA_character_)),
+    party_en = as.character(party_en),
+    party_en = case_when(is.na(party_en) ~ "Independent",
+                         TRUE ~ party_en),
+    age_lab = factor(age_lab, levels = c("(Baseline=30)", "42", "57", "64", "79")),
+    experience_lab = fct_relevel(experience_lab, "No experience"),
+    educ_lab= fct_relevel(educ_lab, "High school"),
+    dynastic_lab = fct_relevel(dynastic_lab, "None"),
+    home_lab = fct_relevel(home_lab, "Born inside district"),
+    party_en = fct_relevel(party_en, "Independent")) %>%
+  select(win, age_lab, experience_lab, educ_lab, dynastic_lab, home_lab, party_en, female, celeb)
+
+DD_up_join <- DD_up %>%
+  mutate(age_lab = as.character(case_when(
+    age >= 30 & age < 42 ~ "(Baseline=30)",
+    age >= 42 & age < 57 ~ "42",
+    age >= 57 & age < 64 ~ "57",
+    age >= 64 & age < 79 ~ "64",
+    age >= 79 ~ "79",
+    TRUE ~ NA_character_)),
+    party_en = as.character(party_en),
+    party_en = case_when(is.na(party_en) ~ "Independent",
+                         TRUE ~ party_en),
+    age_lab = factor(age_lab, levels = c("(Baseline=30)", "42", "57", "64", "79")),
+    experience_lab = fct_relevel(experience_lab, "No experience"),
+    educ_lab= fct_relevel(educ_lab, "High school"),
+    dynastic_lab = fct_relevel(dynastic_lab, "None"),
+    home_lab = fct_relevel(home_lab, "Born inside district"),
+    party_en = fct_relevel(party_en, "Independent")) %>%
+  select(win, age_lab, experience_lab, educ_lab, dynastic_lab, home_lab, party_en, female, celeb)
 
 
+# Join all datasets together
 
+combined<- rbind(DD_lo_join, DD_up_join)
 
+combined <- na.omit(combined)
 
+amces <- cj(combined, win ~ age_lab + experience_lab + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce",
+            by = ~female)
+
+plot(amces)
+
+diff_amces <- cj(combined, win ~ age_lab + experience_lab + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce_differences",
+                 by = ~female)
+
+plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
+
+# Code that doesn't work is at the bottom -- the error message I get is with the
+# diff_amces variable, it says that "number of items to replace is not a
+# multiple of replacement length". I thought this was referring to the fact that
+# there are NAs in the data, but even after removing them I'm still getting the
+# error. For some reason, the only variable that works with "by" is female, so
+# I'm going to create a chart using that.
+
+# amces <- cj(combined, win ~ age_lab + experience_lab + female + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce", 
+#             by = ~celeb)
+# diff_amces <- cj(combined, win ~ age_lab + experience_lab + female + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce_differences",
+#                  by = ~celeb)
+# plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
+```
+```{r corrplot, warning = FALSE}
+# Make correlation matrix (Code mainly unaltered from replication file)
+
+DDD <- list(DD_lo, DD_lo_win, DD_up, DD_up_win)
+cormats <- as.list(rep(NA,4))
+
+for(i in 1:length(DDD)){
+  DDD[[i]]$experience_bin <- DDD[[i]]$experience > 0
+  DDD[[i]]$college <- DDD[[i]]$educ_lab != "High school"
+  DDD[[i]]$todai <- DDD[[i]]$educ_lab == "University of Tokyo"
+  DDD[[i]]$home_bin <- DDD[[i]]$home_lab == "Born inside district"
+  DDD[[i]]$dynastic_bin <- DDD[[i]]$dynastic_lab != "None"
+  DDD[[i]]$LDP <- DDD[[i]]$party_en == "LDP"
+  DDD[[i]]$DPJ <- DDD[[i]]$party_en == "DPJ"
+  DDD[[i]]$JCP <- DDD[[i]]$party_en == "JCP"
+  DDD[[i]]$locpol <- DDD[[i]]$pref_assy == "Yes" | DDD[[i]]$pref_gov
+  atts <- subset(DDD[[i]], select = c("age", "experience_bin", "female", "college", "todai", "home_bin", "dynastic_bin", "LDP", "DPJ", "JCP", "locpol"))
+  names(atts) <- c("Age", "Exp.", "Gender", "Any\n College", "U of\n Tokyo", "Local", "Dynastic", "LDP", "DPJ", "JCP", "Loc. Pol.\n Exp.")
+  cormats[[i]] <- cor(atts, use="pairwise")
+}
+
+titles <- c("HR Candidates", "HR Winners", "HC Candidates", "HC Winners")
+
+for(i in 1:length(cormats)){
+  cormats[[i]][4:5,4:5] <- NA
+  cormats[[i]][8:10,8:10] <- NA
+}
+
+par(mfrow = c(1,2))
+for(i in c(2,4)){
+  suppressWarnings(corrplot(cormats[[i]], method = "color", type = "lower", tl.pos = "ld", cl.pos = "n", tl.col = "black", addCoef.col = "black",
+                            diag = FALSE, title = titles[i], mar = c(0.1,0.1,1,0.1), na.label = " ", line = -1))
+}
+
+```
 
 
 

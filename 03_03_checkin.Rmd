@@ -1,0 +1,125 @@
+---
+title: "3/3 Check In"
+author: "Evelyn Cai"
+date: "3/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2) # 2.2.1
+library(grid) # 3.5.0
+library(gridExtra) # 2.3
+library(corrplot) # 0.84
+library(ggmosaic)
+library(cregg)
+library(corrplot)
+library(cjoint) # 2.0.6
+library(gtable)
+
+```
+
+## Average Treatment Effect of SNTV and PR tiers
+
+```{r conjoint_plots, echo = FALSE}
+
+# Load conjoint data
+
+load("ReplicationPackage/output/conjoint.RData")
+
+# Load functions
+
+source("ReplicationPackage/funs/plot.amce.mod.R")
+source("ReplicationPackage/funs/plot.amce.difference.R")
+source("ReplicationPackage/funs/theme.nolab.R")
+
+# Analysis
+
+# Create new column called ww via function called reweight
+
+reweight <- TRUE
+
+if (reweight){
+  DD$ww <- DD$wgt
+} else {
+  DD$ww <- rep(1, nrow(DD))
+}
+
+# Factorize ideo, urban
+
+DD <- DD %>%
+  mutate(ideo = as.factor(ideo),
+         urban = as.factor(urban),
+         `Highest Educational Attainment` = case_when(`Highest Educational Attainment` == "High school" ~ "High School",
+                                                       TRUE ~ "University"),
+         `Highest Educational Attainment` = as.factor(`Highest Educational Attainment`))
+
+# Filter for certain variables; include urban
+
+amce_subset <- function(condition = rep(TRUE, nrow(DD))){
+  fmla <- Y.1 ~ Party + Age + Gender + Experience + Hometown + ideo + urban + `Prior Occupation`
+  amce(fmla,
+       data = DD, subset = condition,
+       respondent.id = "id", cluster = TRUE, weights = "ww",
+       baselines=baseline)
+}
+
+# Create new data frames
+
+out <- amce_subset()
+
+out.dist.upper <- amce_subset(DD$dist & (DD$house == "upper"))
+out.pr.upper <- amce_subset(!DD$dist & (DD$house == "upper"))
+
+# Plotting results --------------------------------------------------------
+
+clevel = .95
+
+if(reweight){
+  rw <- "rw-"
+} else {
+  rw <- NULL
+}
+
+# Fig 2 top
+plot.amce.difference(out.dist.upper, out.pr.upper, "SNTV Tier", "PR Tier")
+
+
+```
+
+## Average Interaction Effects: Effect of Education on Other Variables
+
+```{r diffats, echo = FALSE}
+
+amce.subset.a <- function(formula, condition = rep(TRUE, nrow(DD)), attribute = NULL, bline){
+  fmla <- update(formula, as.formula(paste0(". ~ . - ", attribute)))
+  ind.baseline <- -match(attribute, names(bline))
+  if(is.na(ind.baseline)) ind.baseline <- 1:length(bline)
+  amce(fmla,
+       data = DD, subset = condition,
+       respondent.id = "id", cluster = TRUE, weights = "ww",
+       baselines=bline[ind.baseline])
+}
+
+# education x other attributes
+fmla <- Y.1 ~ Party + Age + Gender + Experience + Hometown + `Prior Occupation` + `Parental Political Background`
+out.hs <- amce.subset.a(fmla, DD$`Highest Educational Attainment` == "High School", "Education", baseline)
+out.uni <- amce.subset.a(fmla, DD$`Highest Educational Attainment` == "University", "Education", baseline)
+
+
+### Ploting results
+
+clevel = .95
+
+if(reweight){
+  rw <- "rw-"
+} else {
+  rw <- NULL
+}
+
+# Fig on interaction effects
+
+plot.amce.difference(out.hs, out.uni, "High School", "University")
+```
