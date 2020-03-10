@@ -1,0 +1,43 @@
+---
+title: "cregg_plot"
+author: "Evelyn Cai"
+date: "3/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load necessary libraries
+library(tidyverse)
+library(utils)
+library(ggmosaic)
+library(ggplot2)
+library(cregg)
+library(corrplot)
+library(gridExtra)
+```
+
+```{r, AMC_plots_WORKING}
+
+load("ReplicationPackage/output/conjoint.RData")
+
+# Rename the volumns with multiple strings for names, which confuses cj()
+
+DD <- DD %>%
+  rename("Education" = `Highest Educational Attainment`,
+         "Previous_Occupation" = `Prior Occupation`,
+         "Parent_Political_Background" = `Parental Political Background`)
+
+DD_cj <- cj(DD, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce", by = ~Gender)
+
+DD_diff <- cj(DD, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce_diff", by = ~Gender)
+
+x <- plot(rbind(DD_cj, DD_diff)) + ggplot2::facet_wrap(~BY, ncol = 3L) + ggplot2::labs(title = "AMCE by Gender", caption = "Data from Horiuchi, Smith, & Yamamato via Dataverse") + ggthemes::theme_few()
+
+```
+
+``` {r, out.height= "150%"}
+x
+
+```

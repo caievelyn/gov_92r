@@ -25,6 +25,25 @@ DD_lo <- read_csv("ReplicationPackage/data/actual-lower-2014-allcandidates.csv")
 DD_up <- read_csv("ReplicationPackage/data/actual-upper-2013-allcandidates.csv")
 ```
 
+```{r, AMCE_plots_WORKING}
+
+load("ReplicationPackage/output/conjoint.RData")
+
+# Rename the volumns with multiple strings for names, which confuses cj()
+
+DD <- DD %>%
+  rename("Education" = `Highest Educational Attainment`,
+         "Previous_Occupation" = `Prior Occupation`,
+         "Parent_Political_Background" = `Parental Political Background`)
+
+DD_cj <- cj(DD, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce", by = ~Gender)
+
+DD_diff <- cj(DD, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce_diff", by = ~Gender)
+
+plot(rbind(DD_cj, DD_diff)) + ggplot2::facet_wrap(~BY, ncol = 3L) + ggplot2::labs(title = "AMCE by Gender", caption = "Data from Horiuchi, Smith, & Yamamato via Dataverse") + ggthemes::theme_few()
+
+```
+
 ```{r pre_processing_data}
 ### Recoding Variables
 
@@ -279,142 +298,70 @@ age_DD_up_win
 
 # Load conjoint data
 
-load("ReplicationPackage/output/conjoint.RData")
+# load("ReplicationPackage/output/conjoint.RData")
+# 
+# # Load functions
+# 
+# source("ReplicationPackage/funs/plot.amce.mod.R")
+# source("ReplicationPackage/funs/plot.amce.difference.R")
+# source("ReplicationPackage/funs/theme.nolab.R")
+# 
+# # Analysis
+# 
+# # Create new column called ww via function called reweight
+# 
+# reweight <- TRUE
+# 
+# if (reweight){
+#   DD$ww <- DD$wgt
+# } else {
+#   DD$ww <- rep(1, nrow(DD))
+# }
+# 
+# # Factorize ideo, urban
+# 
+# DD <- DD %>%
+#   mutate(ideo = as.factor(ideo),
+#          urban = as.factor(urban),
+#          `Highest Educational Attainment` = case_when(`Highest Educational Attainment` == "High school" ~ "High School",
+#                                                        TRUE ~ "University"),
+# 
+# # Filter for certain variables; include urban
+# 
+# 
+# amce.subset.a <- function(formula, condition = rep(TRUE, nrow(DD)), attribute = NULL, bline){
+#   fmla <- update(formula, as.formula(paste0(". ~ . - ", attribute)))
+#   ind.baseline <- -match(attribute, names(bline))
+#   if(is.na(ind.baseline)) ind.baseline <- 1:length(bline)
+#   amce(fmla,
+#        data = DD, subset = condition,
+#        respondent.id = "id", cluster = TRUE, weights = "ww",
+#        baselines=bline[ind.baseline])
+# }
+# 
+# # education x other attributes
+# fmla <- Y.1 ~ Party + Age + Gender + Experience + Hometown + `Prior Occupation` + `Parental Political Background`
+# out.hs <- amce.subset.a(fmla, DD$`Highest Educational Attainment` == "High School", "Education", baseline)
+# out.uni <- amce.subset.a(fmla, DD$`Highest Educational Attainment` == "University", "Education", baseline)
+# 
+# 
+# ### Ploting results
+# 
+# clevel = .95
+# 
+# if(reweight){
+#   rw <- "rw-"
+# } else {
+#   rw <- NULL
+# }
 
-# Load functions
+# Fig on interaction effects
 
-source("ReplicationPackage/funs/plot.amce.mod.R")
-source("ReplicationPackage/funs/plot.amce.difference.R")
-source("ReplicationPackage/funs/theme.nolab.R")
-
-# Analysis
-
-# Create new column called ww via function called reweight
-
-reweight <- TRUE
-
-if (reweight){
-  DD$ww <- DD$wgt
-} else {
-  DD$ww <- rep(1, nrow(DD))
-}
-
-# Factorize ideo, urban
-
-DD <- DD %>%
-  mutate(ideo = as.factor(ideo),
-         urban = as.factor(urban),
-         `Highest Educational Attainment` = case_when(`Highest Educational Attainment` == "High school" ~ "High School",
-                                                       TRUE ~ "University"),
-         `Highest Educational Attainment` = as.factor(`Highest Educational Attainment`))
-
-# Filter for certain variables; include urban
-
-amce_subset <- function(condition = rep(TRUE, nrow(DD))){
-  fmla <- Y.1 ~ Party + house + Age + Gender + Experience + Hometown + `Prior Occupation` + `Parental Political Background`
-  amce(fmla,
-       data = DD, subset = condition,
-       respondent.id = "id", cluster = TRUE, weights = "ww",
-       baselines=baseline)
-}
-
-# Create new data frames
-
-out <- amce_subset()
-
-out.education.hs <- amce_subset(DD$`Highest Educational Attainment` == "High School")
-out.education.uni <- amce_subset(DD$`Highest Educational Attainment` == "University")
-
-# Plotting results --------------------------------------------------------
-
-clevel = .95
-
-if(reweight){
-  rw <- "rw-"
-} else {
-  rw <- NULL
-}
-
-# Fig 2 top
-plot.amce.difference(out.education.hs, out.education.uni, "High School", "University")
-
+# plot.amce.difference(out.hs, out.uni, "High School", "University")
 
 ```
 
 
-
-```{r AMC_plots_NOT_WORKING}
-
-# Recode Age variables to replicate AMCE charts
-
-DD_lo_join <- DD_lo %>%
-  mutate(age_lab = as.character(case_when(
-    age >= 30 & age < 42 ~ "(Baseline=30)",
-    age >= 42 & age < 57 ~ "42",
-    age >= 57 & age < 64 ~ "57",
-    age >= 64 & age < 79 ~ "64",
-    age >= 79 ~ "79",
-    TRUE ~ NA_character_)),
-    party_en = as.character(party_en),
-    party_en = case_when(is.na(party_en) ~ "Independent",
-                         TRUE ~ party_en),
-    age_lab = factor(age_lab, levels = c("(Baseline=30)", "42", "57", "64", "79")),
-    experience_lab = fct_relevel(experience_lab, "No experience"),
-    educ_lab= fct_relevel(educ_lab, "High school"),
-    dynastic_lab = fct_relevel(dynastic_lab, "None"),
-    home_lab = fct_relevel(home_lab, "Born inside district"),
-    party_en = fct_relevel(party_en, "Independent")) %>%
-  select(win, age_lab, experience_lab, educ_lab, dynastic_lab, home_lab, party_en, female, celeb)
-
-DD_up_join <- DD_up %>%
-  mutate(age_lab = as.character(case_when(
-    age >= 30 & age < 42 ~ "(Baseline=30)",
-    age >= 42 & age < 57 ~ "42",
-    age >= 57 & age < 64 ~ "57",
-    age >= 64 & age < 79 ~ "64",
-    age >= 79 ~ "79",
-    TRUE ~ NA_character_)),
-    party_en = as.character(party_en),
-    party_en = case_when(is.na(party_en) ~ "Independent",
-                         TRUE ~ party_en),
-    age_lab = factor(age_lab, levels = c("(Baseline=30)", "42", "57", "64", "79")),
-    experience_lab = fct_relevel(experience_lab, "No experience"),
-    educ_lab= fct_relevel(educ_lab, "High school"),
-    dynastic_lab = fct_relevel(dynastic_lab, "None"),
-    home_lab = fct_relevel(home_lab, "Born inside district"),
-    party_en = fct_relevel(party_en, "Independent")) %>%
-  select(win, age_lab, experience_lab, educ_lab, dynastic_lab, home_lab, party_en, female, celeb)
-
-
-# Join all datasets together
-
-combined<- rbind(DD_lo_join, DD_up_join)
-
-combined <- na.omit(combined)
-
-amces <- cj(combined, win ~ age_lab + experience_lab + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce",
-            by = ~female)
-
-plot(amces)
-
-diff_amces <- cj(combined, win ~ age_lab + experience_lab + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce_differences",
-                 by = ~female)
-
-plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
-
-# Code that doesn't work is at the bottom -- the error message I get is with the
-# diff_amces variable, it says that "number of items to replace is not a
-# multiple of replacement length". I thought this was referring to the fact that
-# there are NAs in the data, but even after removing them I'm still getting the
-# error. For some reason, the only variable that works with "by" is female, so
-# I'm going to create a chart using that.
-
-# amces <- cj(combined, win ~ age_lab + experience_lab + female + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce", 
-#             by = ~celeb)
-# diff_amces <- cj(combined, win ~ age_lab + experience_lab + female + educ_lab + dynastic_lab + home_lab + party_en, estimate = "amce_differences",
-#                  by = ~celeb)
-# plot(rbind(amces, diff_amces)) + ggplot2::facet_wrap(~BY, ncol = 3L)
-```
 ```{r corrplot, warning = FALSE}
 # Make correlation matrix (Code mainly unaltered from replication file)
 

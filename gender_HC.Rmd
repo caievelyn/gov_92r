@@ -1,0 +1,38 @@
+---
+title: "Gender_HC"
+author: "Evelyn Cai"
+date: "3/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+
+library(tidyverse)
+library(ggplot2) # 2.2.1
+library(grid) # 3.5.0
+library(gridExtra) # 2.3
+library(corrplot) # 0.84
+library(ggmosaic)
+library(cregg)
+library(corrplot)
+library(cjoint) # 2.0.6
+library(gtable)
+library(foreign)
+library(readstata13)
+
+# Read in data
+hoc <- read.dta13("HoC_merged.dta")
+
+```
+
+
+```{r exploration, echo = FALSE}
+
+
+
+```
+
+
