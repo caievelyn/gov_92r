@@ -12,16 +12,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(ggplot2) # 2.2.1
-library(grid) # 3.5.0
-library(gridExtra) # 2.3
-library(corrplot) # 0.84
-library(ggmosaic)
 library(cregg)
-library(corrplot)
 library(cjoint) # 2.0.6
-library(gtable)
 library(foreign)
 library(readstata13)
+library(skimr)
+library(rstanarm)
+library(sjPlot)
 
 # Read in data
 hoc <- read.dta13("HoC_merged.dta")
@@ -29,10 +26,64 @@ hoc <- read.dta13("HoC_merged.dta")
 ```
 
 
-```{r exploration, echo = FALSE}
+```{r exploration}
 
+# Explore the effect of respondent gender on whether they voted for a female
 
+hoc %>%
+  select(location, male_respondent, female_respondent, age, education, income, voted_female, past_turnout_habits) %>%
+  
+  # I want to answer the question whether female respondents tend to vote for
+  # female candidates more than male respondents do. If so, then what
+  # demographic of females do so - highly educated ones, richer ones, younger
+  # one? If not, then the same question as well.
+  
+  pivot_longer(names_to = "gender", values_to = "ct", cols = c(male_respondent, female_respondent)) %>%
+  filter(ct == 1) %>%
+  na.omit(voted_female) %>%
+  select(gender, voted_female) %>%
+  group_by(gender) %>%
+  mutate(sum = n()) %>%
+  ungroup() %>%
+  group_by(gender, voted_female) %>%
+  mutate(count = n(),
+         proportion = count/sum) %>%
+  distinct()
 
-```
+# This confirms that there's a slightly larger proportion of female respondents
+# who vote female as opposed to male. I'm going to fit a linear regression to
+# this to look at the 95% confidence interval to see if it's statistically
+# significant or not.
+
+fit_data <- hoc %>%
+  select(male_respondent, female_respondent, age, education, income, voted_female, past_turnout_habits) %>%
+  pivot_longer(names_to = "gender", values_to = "ct", cols = c(male_respondent, female_respondent)) %>%
+  filter(ct == 1) %>%
+  na.omit(voted_female)
+
+set.seed(400)
+
+gender_fit <- stan_glm(data = fit_data, formula = voted_female ~ gender + age + education + income + past_turnout_habits, refresh = 0)
+
+tab_model(gender_fit, digits = 4)
+
+# That didn't really reveal much, so let's look at their treatment groups.
+
+treatment_data <- hoc %>%
+  select(male_respondent, female_respondent, age, education, income, voted_female, past_turnout_habits, cast_preference_vote, treatment_group) %>%
+  pivot_longer(names_to = "gender", values_to = "ct", cols = c(male_respondent, female_respondent)) %>%
+  filter(ct == 1) %>%
+  na.omit(voted_female) %>%
+  mutate(treatment_group = as.factor(treatment_group))
+
+# Create regression model
+
+treatment_fit <- stan_glm(data = treatment_data, formula = voted_female ~ gender * treatment_group, refresh = 0)
+
+tab_model(treatment_fit)
+
+plot_model(treatment_fit, title = "Treatment Group and Effect on Gender Preference in Voting", colors = c("red", "blue"))
+
+``` 
 
 
