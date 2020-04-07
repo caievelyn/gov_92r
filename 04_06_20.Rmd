@@ -35,6 +35,35 @@ First we have to pre-process the data. In the following section, I define the fo
 * `occupationxtasky`
 * `politicsxtasky` ^
 
+```{r pre-processing-data, echo = FALSE}
+
+# Create the necessary variables
+
+# Define function for naming variables
+num_list = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+multi_incumbency1 <- function(df, num) {
+    varname <- paste("incumbency1task", num, sep="")
+    mutate(df, !!varname := "")
+}
+multi_incumbency2 <- function(df, num) {
+    varname <- paste("incumbency2task", num, sep="")
+    mutate(df, !!varname := "")
+}
+
+# For loop through mutate
+for (num in num_list) {
+  hoc <- multi_incumbency1(df = hoc, num=num)
+  hoc <- multi_incumbency1(df = hoc, num = num)
+}
+for (num in num_list) {
+  hoc <- multi_incumbency2(df = hoc, num=num)
+  hoc <- multi_incumbency2(df = hoc, num=num)
+}
+
+
+```
+
+
 Then we will pivot longer the following columns:
 incumbency1task incumbency2task gender1task gender2task age1task age2task education1task education2task occupation1task occupation2task politics1task politics2task hometown1task hometown2task
 
