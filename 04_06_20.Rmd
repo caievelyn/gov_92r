@@ -1,0 +1,290 @@
+---
+title: "April 4th Check-In"
+author: "Evelyn Cai"
+date: "4/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+
+library(tidyverse)
+library(ggplot2) # 2.2.1
+library(cregg)
+library(cjoint) # 2.0.6
+library(foreign)
+library(readstata13)
+library(skimr)
+library(rstanarm)
+library(sjPlot)
+
+# Read in data
+hoc <- read.dta13("HoC_merged.dta")
+```
+
+First we have to pre-process the data. In the following section, I define the following new variables:
+
+* `chooseprofile` on whether the randomized hypothetical candidate was chosen
+* `incumbencyxtasky` where x is either 1 or 2 and y is 1 through 10 for a total of 20 differently defined variables
+* `genderxtasky` where same thing as above^
+* `agextasky` ^
+* `educationxtasky` ^
+* `hometownxtasky` ^
+* `occupationxtasky`
+* `politicsxtasky` ^
+
+Then we will pivot longer the following columns:
+incumbency1task incumbency2task gender1task gender2task age1task age2task education1task education2task occupation1task occupation2task politics1task politics2task hometown1task hometown2task
+
+Make the following series of renames:
+rename incumbency1task c_incumbency1
+rename incumbency2task c_incumbency2
+rename gender1task c_gender1
+rename gender2task c_gender2
+rename age1task c_age1
+rename age2task c_age2
+rename education1task c_education1 
+rename education2task c_education2
+rename occupation1task c_occupation1
+rename occupation2task c_occupation2
+rename politics1task c_politics1
+rename politics2task c_politics2
+rename hometown1task c_hometown1
+rename hometown2task c_hometown2
+
+*rename incumbency1 c_incumbency1
+*rename incumbency2 c_incumbency2
+*rename gender1 c_gender1
+*rename gender2 c_gender2
+*rename age1 c_age1
+*rename age2 c_age2
+*rename education1 c_education1 
+*rename education2 c_education2
+*rename occupation1 c_occupation1
+*rename occupation2 c_occupation2
+*rename politics1 c_politics1
+*rename politics2 c_politics2
+*rename hometown1 c_hometown1
+*rename hometown2 c_hometown2
+
+Pivot longer the following:
+reshape long c_incumbency c_gender c_age c_education c_occupation c_politics c_hometown
+
+Create the following variables:
+c_local = "都道府県以内"
+c_politics2 = c_politics
+c_incumbencyid = 0
+label_incumbency = "Newcomer"
+c_genderid = 0
+label_gender = "Male"
+c_ageid = 0
+label_age = "42"
+c_localid = 0
+label_local = "Outside prefecture"
+c_educationid = 0
+label_education = "High school"
+c_occupationid = 0
+label_occupation = "Company employee"
+c_politicsid = 0
+label_politics = "No background"
+agebias = 0
+
+
+
+Make the following recodes:
+replace chooseprofile = 1 if Conjoint_A1_num == 1 & profile == 1 & task == 1
+replace chooseprofile = 1 if Conjoint_A1_num == 2 & profile == 2 & task == 1
+replace chooseprofile = 1 if Conjoint_A2_num == 1 & profile == 1 & task == 2
+replace chooseprofile = 1 if Conjoint_A2_num == 2 & profile == 2 & task == 2
+replace chooseprofile = 1 if Conjoint_A3_num == 1 & profile == 1 & task == 3
+replace chooseprofile = 1 if Conjoint_A3_num == 2 & profile == 2 & task == 3
+replace chooseprofile = 1 if Conjoint_A4_num == 1 & profile == 1 & task == 4
+replace chooseprofile = 1 if Conjoint_A4_num == 2 & profile == 2 & task == 4
+replace chooseprofile = 1 if Conjoint_A5_num == 1 & profile == 1 & task == 5
+replace chooseprofile = 1 if Conjoint_A5_num == 2 & profile == 2 & task == 5
+replace chooseprofile = 1 if Conjoint_A6_num == 1 & profile == 1 & task == 6
+replace chooseprofile = 1 if Conjoint_A6_num == 2 & profile == 2 & task == 6
+replace chooseprofile = 1 if Conjoint_A7_num == 1 & profile == 1 & task == 7
+replace chooseprofile = 1 if Conjoint_A7_num == 2 & profile == 2 & task == 7
+replace chooseprofile = 1 if Conjoint_A8_num == 1 & profile == 1 & task == 8
+replace chooseprofile = 1 if Conjoint_A8_num == 2 & profile == 2 & task == 8
+replace chooseprofile = 1 if Conjoint_A9_num == 1 & profile == 1 & task == 9
+replace chooseprofile = 1 if Conjoint_A9_num == 2 & profile == 2 & task == 9
+replace chooseprofile = 1 if Conjoint_A10_num == 1 & profile == 1 & task == 10
+replace chooseprofile = 1 if Conjoint_A10_num == 2 & profile == 2 & task == 10
+
+replace c_local = "都道府県以外" if c_hometown == "北海道以外"
+replace c_local = "都道府県以外" if c_hometown == "青森県以外"
+replace c_local = "都道府県以外" if c_hometown == "岩手県以外"
+replace c_local = "都道府県以外" if c_hometown == "宮城県以外"
+replace c_local = "都道府県以外" if c_hometown == "秋田県以外"
+replace c_local = "都道府県以外" if c_hometown == "山形県以外"
+replace c_local = "都道府県以外" if c_hometown == "福島県以外"
+replace c_local = "都道府県以外" if c_hometown == "栃木県以外"
+replace c_local = "都道府県以外" if c_hometown == "茨城県以外"
+replace c_local = "都道府県以外" if c_hometown == "群馬県以外"
+replace c_local = "都道府県以外" if c_hometown == "埼玉県以外"
+replace c_local = "都道府県以外" if c_hometown == "千葉県以外"
+replace c_local = "都道府県以外" if c_hometown == "東京都以外"
+replace c_local = "都道府県以外" if c_hometown == "三重県以外"
+replace c_local = "都道府県以外" if c_hometown == "京都府以外"
+replace c_local = "都道府県以外" if c_hometown == "佐賀県以外"
+replace c_local = "都道府県以外" if c_hometown == "兵庫県以外"
+replace c_local = "都道府県以外" if c_hometown == "和歌山県以外"
+replace c_local = "都道府県以外" if c_hometown == "大分県以外"
+replace c_local = "都道府県以外" if c_hometown == "大阪府以外"
+replace c_local = "都道府県以外" if c_hometown == "奈良県以外"
+replace c_local = "都道府県以外" if c_hometown == "宮崎県以外"
+replace c_local = "都道府県以外" if c_hometown == "富山県以外"
+replace c_local = "都道府県以外" if c_hometown == "山口県以外"
+replace c_local = "都道府県以外" if c_hometown == "山梨県以外"
+replace c_local = "都道府県以外" if c_hometown == "岐阜県以外"
+replace c_local = "都道府県以外" if c_hometown == "岡山県以外"
+replace c_local = "都道府県以外" if c_hometown == "島根県以外"
+replace c_local = "都道府県以外" if c_hometown == "広島県以外"
+replace c_local = "都道府県以外" if c_hometown == "徳島県以外"
+replace c_local = "都道府県以外" if c_hometown == "愛媛県以外"
+replace c_local = "都道府県以外" if c_hometown == "愛知県以外"
+replace c_local = "都道府県以外" if c_hometown == "新潟県以外"
+replace c_local = "都道府県以外" if c_hometown == "沖縄県以外"
+replace c_local = "都道府県以外" if c_hometown == "滋賀県以外"
+replace c_local = "都道府県以外" if c_hometown == "熊本県以外"
+replace c_local = "都道府県以外" if c_hometown == "石川県以外"
+replace c_local = "都道府県以外" if c_hometown == "神奈川県以外"
+replace c_local = "都道府県以外" if c_hometown == "福井県以外"
+replace c_local = "都道府県以外" if c_hometown == "福岡県以外"
+replace c_local = "都道府県以外" if c_hometown == "長崎県以外"
+replace c_local = "都道府県以外" if c_hometown == "長野県以外"
+replace c_local = "都道府県以外" if c_hometown == "静岡県以外"
+replace c_local = "都道府県以外" if c_hometown == "香川県以外"
+replace c_local = "都道府県以外" if c_hometown == "高知県以外"
+replace c_local = "都道府県以外" if c_hometown == "鳥取県以外"
+replace c_local = "都道府県以外" if c_hometown == "鹿児島県以外"
+
+replace c_politics2 = "都道府県議会議員" if c_politics == "北海道議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "青森県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "岩手県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "宮城県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "秋田県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "山形県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "福島県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "栃木県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "茨城県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "群馬県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "埼玉県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "千葉県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "東京都議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "三重県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "京都府議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "佐賀県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "兵庫県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "和歌山県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "大分県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "大阪府議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "奈良県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "宮崎県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "富山県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "山口県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "山梨県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "岐阜県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "岡山県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "島根県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "広島県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "徳島県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "愛媛県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "愛知県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "新潟県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "沖縄県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "滋賀県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "熊本県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "石川県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "神奈川県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "福井県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "福岡県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "長崎県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "長野県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "静岡県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "香川県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "高知県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "鳥取県議会議員"
+replace c_politics2 = "都道府県議会議員" if c_politics == "鹿児島県議会議員"
+
+replace c_incumbencyid = 1 if c_incumbency == "元職 (1回)"
+replace c_incumbencyid = 2 if c_incumbency == "元職 (2回以上)"
+replace c_incumbencyid = 3 if c_incumbency == "現職 (1回)"
+replace c_incumbencyid = 4 if c_incumbency == "現職 (2回以上)"
+
+replace label_incumbency = "Former, 1 term" if c_incumbencyid == 1
+replace label_incumbency = "Former, 2+ terms" if c_incumbencyid == 2
+replace label_incumbency = "Current, 1 term" if c_incumbencyid == 3
+replace label_incumbency = "Current, 2+ terms" if c_incumbencyid == 4
+labmask c_incumbencyid, values(label_incumbency)
+
+replace c_genderid = 1 if c_gender == "女性"
+
+replace label_gender = "Female" if c_genderid == 1
+labmask c_genderid, values(label_gender)
+
+replace c_ageid = 1 if c_age == "47歳"
+replace c_ageid = 2 if c_age == "55歳"
+replace c_ageid = 3 if c_age == "69歳"
+replace c_ageid = 4 if c_age == "70歳"
+
+replace label_age = "47" if c_ageid == 1
+replace label_age = "55" if c_ageid == 2
+replace label_age = "69" if c_ageid == 3
+replace label_age = "70" if c_ageid == 4
+labmask c_ageid, values(label_age)
+
+replace c_localid = 1 if c_local == "都道府県以内"
+
+replace label_local = "Inside prefecture" if c_localid == 1
+labmask c_localid, values(label_local)
+
+replace c_educationid = 1 if c_education == "地方国立大卒"
+replace c_educationid = 2 if c_education == "東大卒"
+replace c_educationid = 3 if c_education == "大学院卒"
+
+replace label_education = "Regional university" if c_educationid == 1
+replace label_education = "University of Tokyo" if c_educationid == 2
+replace label_education = "Graduate school" if c_educationid == 3
+labmask c_educationid, values(label_education)
+
+replace c_occupationid = 1 if c_occupation == "国家公務員"
+replace c_occupationid = 2 if c_occupation == "新聞記者"
+replace c_occupationid = 3 if c_occupation == "自衛官"
+replace c_occupationid = 4 if c_occupation == "タレント"
+
+replace label_occupation = "National bureaucrat" if c_occupationid == 1
+replace label_occupation = "Newspaper reporter" if c_occupationid == 2
+replace label_occupation = "Self-Defense Forces" if c_occupationid == 3
+replace label_occupation = "Celebrity/talent" if c_occupationid == 4
+labmask c_occupationid, values(label_occupation)
+
+replace c_politicsid = 1 if c_politics2 == "都道府県議会議員"
+replace c_politicsid = 2 if c_politics2 == "議員秘書"
+replace c_politicsid = 3 if c_politics2 == "世襲政治家"
+
+replace label_politics = "Prefectural assembly" if c_politicsid == 1
+replace label_politics = "MP secretary" if c_politicsid == 2
+replace label_politics = "Dynastic politician" if c_politicsid == 3
+labmask c_politicsid, values(label_politics)
+
+replace agebias = 1 if age_leaders == "Don't know"
+replace agebias = 2 if age_leaders == "Agree"
+replace agebias = 2 if age_leaders == "Strongly agree"
+
+Lastly, use the cregg package to create cj plots for each treatment group, with the outcome variable as chooseprofile and by~treatment_group
+
+
+```{r amce_plots}
+
+# Select only for the relevant variables
+# hoc_1 <- cj(hoc, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce", by = ~Gender)
+# 
+# DD_diff <- cj(DD, formula = Y.1 ~ Party + Age + Experience + Hometown + Education + Previous_Occupation, estimate = "amce_diff", by = ~Gender)
+
+```
+
