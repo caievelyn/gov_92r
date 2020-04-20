@@ -1,0 +1,356 @@
+---
+title: "4/14/20 Check-In"
+author: "Evelyn Cai"
+date: "4/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+
+library(tidyverse)
+library(ggplot2) # 2.2.1
+library(cregg)
+library(cjoint) # 2.0.6
+library(foreign)
+library(readstata13)
+library(skimr)
+library(rstanarm)
+library(sjPlot)
+
+# Read in data, set nonint.factors=TRUE to preserve factor levels
+hoc <- read.dta13("processed_hoc_data.dta",
+                  nonint.factors = TRUE)
+```
+
+
+```{r conjoint_plots, echo = FALSE, cache = TRUE, warning = FALSE}
+
+# Code to calculate AMCEs
+first_group <- cj(hoc, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+
+# Define character vector to label y axis
+a  <-  rev(c("Incumbency",
+              "Newcomer",
+              "Former, 1 term",
+              "Former, 2+ terms",
+              "Current, 1 term",
+              "Current, 2+ terms",
+              "Gender",
+              "Male",
+              "Female",
+              "Age",
+              "42",
+              "47",
+              "55",
+              "59",
+              "70",
+              "Education",
+              "High school",
+              "Regional university",
+              "University of Tokyo",
+              "Graduate school",
+              "Local status",
+              "Outside prefecture",
+              "Inside prefecture",
+              "Previous Occupation",
+              "Company employee",
+              "National bureaucrat",
+              "Newspaper reporter",
+              "Self-Defense Forces",
+              "Celebrity",
+              "Political Background",
+              "No background",
+              "Prefectural assembly",
+              "MP secretary",
+              "Dynastic politician"))
+
+# Save plot of all four treatment groups
+x <- plot(first_group) +
+  facet_wrap(~BY, ncol = 4L) +
+  labs(title = "Average marginal component effects of\ncandidate attributes by treatment group") +
+  theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+  
+# Subset for just groups 1 & 2
+`1_2_data` <- hoc %>%
+  filter(treatment_group == 1 | treatment_group == 2)
+
+# Subset for just groups 1 & 3
+`1_3_data` <- hoc %>%
+  filter(treatment_group == 1 | treatment_group == 3)
+
+# Subset for just groups 1 & 4
+`1_4_data` <- hoc %>%
+  filter(treatment_group == 1 | treatment_group == 4)
+
+# Subset for just groups 2 & 3
+`2_3_data` <- hoc %>%
+  filter(treatment_group == 2 | treatment_group == 3)
+
+# Subset for just groups 2 & 4
+`2_4_data` <- hoc %>%
+  filter(treatment_group == 2 | treatment_group == 4)
+
+# Subset for just groups 3 & 4
+`3_4_data` <- hoc %>%
+  filter(treatment_group == 3 | treatment_group == 4)
+
+# Calculate difference plots for 1 & 2
+`1_2_amce` <- cj(`1_2_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`1_2_diff` <- cj(`1_2_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Calculate difference plots for 1 & 3
+`1_3_amce` <- cj(`1_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`1_3_diff` <- cj(`1_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Calculate difference plots for 1 & 4
+`1_4_amce` <- cj(`1_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`1_4_diff` <- cj(`1_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Calculate difference plots for 2 & 3
+`2_3_amce` <- cj(`2_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`2_3_diff` <- cj(`2_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Calculate difference plots for 2 & 4
+`2_4_amce` <- cj(`2_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`2_4_diff` <- cj(`2_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Calculate difference plots for 3 & 4
+`3_4_amce` <- cj(`3_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce", level_order = c("descending"), by = ~treatment_group)
+`3_4_diff` <- cj(`3_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "amce_diff", level_order = c("descending"), by = ~treatment_group)
+
+# Plot both plots for 1 & 2
+x_1 <- plot(rbind(`1_2_amce`, `1_2_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 1 and 2", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot both plots for 1 & 3
+x_2 <- plot(rbind(`1_3_amce`, `1_3_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 1 and 3", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot both plots for 1 & 4
+x_3 <- plot(rbind(`1_4_amce`, `1_4_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 1 and 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot both plots for 2 & 3
+x_4 <- plot(rbind(`2_3_amce`, `2_3_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 2 and 3", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot both plots for 2 & 4
+x_5 <- plot(rbind(`2_4_amce`, `2_4_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 2 and 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot both plots for 3 & 4
+x_6 <- plot(rbind(`3_4_amce`, `3_4_diff`)) +
+  facet_wrap(~BY, ncol = 3L) + 
+  labs(title = "Difference in AMCEs for Treatment Groups 3 and 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(
+    fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  scale_x_continuous(seq(-.3, .1, by = 0.1), labels = c("-.3", "-.2", "-.1", "0", ".1")) +
+  geom_vline(xintercept = 0, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+
+
+
+
+```
+
+The first set of graphs correspond to the AMCE plot in the paper that compares the AMCEs of variables for respondents from all four treatment groups. The second set of six plots compare different treatment groups with each other.
+
+Ordering of various levels on the y axis is important according to Leeper *et al.* (2019). It matters how they're displayed so that they do not distort average treatment effect size, hence the specification the level_order is "descending".
+
+For reference, the treatment groups are as follows:
+1. No information, no compulsory voting
+2. Information, no compulsory voting
+3. No information, compulsory voting
+4. Information, compulsory voting
+
+
+```{r display, echo = FALSE}
+
+x
+
+x_1
+
+x_2
+
+x_3
+
+x_4
+
+x_5
+
+x_6
+```
+
+## Marginal Means
+
+According to Leeper *et al.* (2019), "AMCEs infully randomized designs are simply dierences between marginal means at each feature
+level and the marginal mean in the reference category, ignoring other features." A flaw with interpreting "differences in conditional AMCEs as differences in underlying preferences" exists because of how the subgroups that are being compared are chosen, and whether there are any meaningful *absolute* differences.  Finding the marginal means, then, can be done using the `cregg` package.
+
+```{r marginal_means, echo = FALSE, cache = TRUE, warning = FALSE}
+
+# Calculate marginal means
+mm_all <- cj(hoc, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm", level_order = c("descending"), by = ~treatment_group)
+
+# Plot marginal means
+y <- plot(mm_all) +
+  facet_wrap(~BY, ncol = 4L) +
+  labs(title = "Marginal Means for all Treatment Groups", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Calculate difference in marginal means for groups 1 & 2
+`1_2_mm` <- cj(`1_2_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+# Calculate difference in marginal means for groups 1 & 3
+`1_3_mm` <- cj(`1_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+# Calculate difference in marginal means for groups 1 & 4
+`1_4_mm` <- cj(`1_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+# Calculate difference in marginal means for groups 2 & 3
+`2_3_mm` <- cj(`2_3_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+# Calculate difference in marginal means for groups 2 & 4
+`2_4_mm` <- cj(`2_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+# Calculate difference in marginal means for groups 3 & 4
+`3_4_mm` <- cj(`3_4_data`, formula = chooseprofile ~ c_incumbencyid + c_genderid + c_ageid + c_educationid + c_localid + c_occupationid + c_politicsid, estimate = "mm_differences", level_order = c("descending"), by = ~treatment_group)
+
+# Plot difference in marginal means for groups 1 & 2
+y_1 <- plot(`1_2_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 1 & 2", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot difference in marginal means for groups 1 & 3
+y_2 <- plot(`1_3_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 1 & 3", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot difference in marginal means for groups 1 & 4
+y_3 <- plot(`1_4_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 1 & 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot difference in marginal means for groups 2 & 3
+y_4 <- plot(`2_3_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 2 & 3", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot difference in marginal means for groups 2 & 4
+y_5 <- plot(`2_4_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 2 & 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+
+# Plot difference in marginal means for groups 3 & 4
+y_6 <- plot(`3_4_mm`) +
+  labs(title = "Difference in Marginal Means for Treatment Groups 3 & 4", caption = "") +
+theme_minimal() +
+  theme(legend.position = "none", axis.title.x = element_blank(), panel.background = element_rect(fill = "gray100", colour = "gray100", size = 2, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "white")) +
+  geom_vline(xintercept = 0.5, linetype="dotted", color = "red") +
+  scale_y_discrete(labels = a)
+```
+
+
+```{r display_mm, echo = FALSE}
+
+y
+
+y_1
+
+y_2
+
+y_3
+
+y_4
+
+y_5
+
+y_6
+
+```
+

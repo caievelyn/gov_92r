@@ -1,0 +1,27 @@
+---
+title: "4/21 Check In"
+author: "Evelyn Cai"
+date: "4/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+
+library(tidyverse)
+library(ggplot2) # 2.2.1
+library(cregg)
+library(cjoint) # 2.0.6
+library(foreign)
+library(readstata13)
+library(skimr)
+library(rstanarm)
+library(sjPlot)
+
+# Read in data, set nonint.factors=TRUE to preserve factor levels
+hoc <- read.dta13("processed_hoc_data.dta",
+                  nonint.factors = TRUE)
+```
+
